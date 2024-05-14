@@ -1278,6 +1278,16 @@ app.post("/formpages/7", isAuthenticated, (req, res) => {
 
 app.get("/formpages/8", isAuthenticated, (req, res) => {
   const userEmail = req.session.currUser.email;
+  let phdpath=req.session.phdpath;
+  let pgpath=req.session.pgpath;
+  let ugpath=req.session.ugpath;
+  let twpath=req.session.twpath;
+  let tepath=req.session.tepath;
+  let paypath=req.session.paypath;
+  let nocpath=req.session.nocpath;
+  let miscpath=req.session.miscpath;
+  let postpath=req.session.postpath;
+  let signpath=req.session.signpath;
   db.query(
     "SELECT first_name, last_name FROM profile WHERE email = ?",
     [userEmail],
@@ -1289,17 +1299,120 @@ app.get("/formpages/8", isAuthenticated, (req, res) => {
       if (rows.length === 0) {
         return res.status(404).send("Profile not found");
       }
+      
+
       const { first_name, last_name } = rows[0];
       res.render("formpages/8th.ejs", {
         firstname: first_name,
         lastname: last_name,
-      });
+        phdpath:phdpath,
+        pgpath:pgpath,
+        ugpath: ugpath,
+        twpath:twpath,
+        tepath:tepath,
+        paypath: paypath,
+        nocpath: nocpath,
+        miscpath: miscpath,
+        postpath: postpath,
+        signpath:signpath
+      })
+      
     }
   );
 });
 
 app.post("/formpages/8", isAuthenticated, (req, res) => {
   res.redirect("/formpages/9");
+});
+
+app.post('/upload', upload.fields([
+  { name: 'phdCertificate' },
+  { name: 'pgDocuments' },
+  { name: 'ugDocuments' },
+  { name: 'twelfthCertificate' },
+  { name: 'tenthCertificate' },
+  { name: 'paySlip' },
+  { name: 'nocUndertaking' },
+  { name: 'postPhdExperience' },
+  { name: 'miscCertificate' },
+  { name: 'bestpapers' },
+  { name: 'signature' }
+]), (req, res) => {
+  let page_8 = {
+    email: req.session.currUser.email,
+    phd_path: req.files['phdCertificate'] ? req.files['phdCertificate'][0].path : null,
+    pg_path: req.files['pgDocuments'] ? req.files['pgDocuments'][0].path : null,
+    ug_path: req.files['ugDocuments'] ? req.files['ugDocuments'][0].path : null,
+    tw_path: req.files['twelfthCertificate'] ? req.files['twelfthCertificate'][0].path : null,
+    te_path: req.files['tenthCertificate'] ? req.files['tenthCertificate'][0].path : null,
+    pay_path: req.files['paySlip'] ? req.files['paySlip'][0].path : null,
+    noc_path: req.files['nocUndertaking'] ? req.files['nocUndertaking'][0].path : null,
+    post_path: req.files['postPhdExperience'] ? req.files['postPhdExperience'][0].path : null,
+    misc_path: req.files['miscCertificate'] ? req.files['miscCertificate'][0].path : null,
+    sign_path: req.files['signature'] ? req.files['signature'][0].path : null
+  };
+  req.session.phdpath = page_8.phd_path;
+  req.session.pgpath = page_8.pg_path;
+  req.session.ugpath = page_8.ug_path;
+  req.session.twpath = page_8.tw_path;
+  req.session.tepath = page_8.te_path;
+  req.session.paypath = page_8.pay_path;
+  req.session.nocpath = page_8.noc_path;
+  req.session.postpath = page_8.post_path;
+  req.session.miscpath = page_8.misc_path;
+  req.session.signpath = page_8.sign_path;
+
+  // db.query('INSERT INTO page_8 SET ?', page_8, (err, result) => {
+  //   if (err) {
+  //     console.error('Error inserting page_8 data:', err);
+  //     res.status(500).send('Internal Server Error');
+  //     return;
+  //   }
+  //   // res.send('Files uploaded successfully');
+  //   res.redirect("/formpages/9");
+  // })
+    db.query("DELETE FROM page_8", (err, result) => {
+      db.query(
+        "INSERT INTO page_8 SET ?",
+        page_8, (err, result) => {
+          if (err) {
+            console.error("Error inserting page_8 data:", err);
+            res.status(500).send("Internal Server Error");
+            return;
+          }
+        }
+      );
+    });
+    // Delete all existing rows in the datapage table
+    db.query("DELETE FROM datapage", (err, result) => {
+      if (err) throw err;
+      // Insert or update rows based on new data
+      for (let i = 0; i < req.body.ref_name.length; i++) {
+        let data2 = {
+          id: null,
+          email: req.session.currUser.email,
+          email07: req.body.email[i],
+          ref_name: req.body.ref_name[i],
+          phone: req.body.phone[i],
+          position: req.body.position[i],
+          association_referee: req.body.association_referee[i],
+          org: req.body.org[i],
+        };
+        let sql = `INSERT INTO datapage SET ? ON DUPLICATE KEY UPDATE 
+                email = VALUES(email), 
+                email07 = VALUES(email07),
+                ref_name = VALUES(ref_name), 
+                phone = VALUES(phone), 
+                position = VALUES(position), 
+                association_referee = VALUES(association_referee), 
+                org = VALUES(org)`;
+
+        db.query(sql, data2, (err, result) => {
+          if (err) throw err;
+        });
+      }
+    });
+    res.redirect("/formpages/9");
 });
 
 app.get("/formpages/9", isAuthenticated, (req, res) => {
@@ -1325,8 +1438,249 @@ app.get("/formpages/9", isAuthenticated, (req, res) => {
 });
 
 app.post("/formpages/9", isAuthenticated, (req, res) => {
-  res.redirect("/formpages/10");
+  res.redirect("/generate-pdf");
 });
+
+app.get("/generate-pdf", isAuthenticated, (req, res) => {
+  const userEmail = req.session.currUser.email;
+  // Query to get user profile
+  db.query("SELECT first_name, last_name FROM profile WHERE email = ?", [userEmail], (err, rows) => {
+    if (err) {
+      console.error("Error retrieving profile data:", err);
+      return res.status(500).send("Internal Server Error");
+    }
+    if (rows.length === 0) {
+      return res.status(404).send("Profile not found");
+    }
+    const { first_name, last_name } = rows[0];
+
+    // Fetch additional data needed for the application details
+    db.query("SELECT * FROM applicationdetails WHERE email = ?", [userEmail], (err, appDetails) => {
+      if (err) {
+        console.error("Error retrieving application details:", err);
+        return res.status(500).send("Internal Server Error");
+      }
+      
+      
+
+      db.query("SELECT * FROM personaldetails WHERE email = ?", [userEmail], (err, perDetails) => {
+        if (err) {
+          console.error("Error retrieving personal details:", err);
+          return res.status(500).send("Internal Server Error");
+        }
+        
+
+
+        db.query("SELECT * FROM educationaldetails WHERE email = ?", [userEmail], (err, eduDetails) => {
+          if (err) {
+            console.error("Error retrieving personal details:", err);
+            return res.status(500).send("Internal Server Error");
+          }
+          
+          db.query("SELECT * FROM edu_additionaldetails WHERE educationaldetails_id IN (SELECT id FROM educationaldetails WHERE email = ?)", [userEmail], (err, eduadd) => {
+            if (err) {
+              console.error("Error retrieving personal details:", err);
+              return res.status(500).send("Internal Server Error");
+            }
+
+          db.query("SELECT * FROM presentemployment  WHERE email = ?", [userEmail], (err, pres) => {
+            if (err) {
+              console.error("Error retrieving personal details:", err);
+              return res.status(500).send("Internal Server Error");
+            }
+    
+          
+      
+            db.query("SELECT * FROM employmenthistory WHERE email = ?", [userEmail], (err, ehist) => {
+              if (err) {
+                console.error("Error retrieving personal details:", err);
+                return res.status(500).send("Internal Server Error");
+              }
+
+              db.query("SELECT * FROM teachingexp WHERE email = ?", [userEmail], (err, texp) => {
+                if (err) {
+                  console.error("Error retrieving personal details:", err);
+                  return res.status(500).send("Internal Server Error");
+                }
+                
+
+                db.query("SELECT * FROM researchexp WHERE email = ?", [userEmail], (err, rexp) => {
+                  if (err) {
+                    console.error("Error retrieving personal details:", err);
+                    return res.status(500).send("Internal Server Error");
+                  }
+                  
+
+
+                  db.query("SELECT * FROM industrialexp WHERE email = ?", [userEmail], (err, indexp) => {
+                    if (err) {
+                      console.error("Error retrieving personal details:", err);
+                      return res.status(500).send("Internal Server Error");
+                    }
+                    
+
+                    db.query("SELECT * FROM aos_aor WHERE email = ?", [userEmail], (err, aosaor) => {
+                      if (err) {
+                        console.error("Error retrieving personal details:", err);
+                        return res.status(500).send("Internal Server Error");
+                      }
+
+                      db.query("SELECT * FROM publications WHERE email = ?", [userEmail], (err, pub) => {
+                        if (err) {
+                          console.error("Error retrieving personal details:", err);
+                          return res.status(500).send("Internal Server Error");
+                        }
+                        db.query("SELECT * FROM top10publications WHERE email = ?", [userEmail], (err, top10) => {
+                          if (err) {
+                            console.error("Error retrieving personal details:", err);
+                            return res.status(500).send("Internal Server Error");
+                          }
+                          db.query("SELECT * FROM patents WHERE email = ?", [userEmail], (err, patent) => {
+                            if (err) {
+                              console.error("Error retrieving personal details:", err);
+                              return res.status(500).send("Internal Server Error");
+                            }
+                          db.query("SELECT * FROM books WHERE email = ?", [userEmail], (err, book) => {
+                            if (err) {
+                              console.error("Error retrieving personal details:", err);
+                              return res.status(500).send("Internal Server Error");
+                            }
+                            db.query("SELECT * FROM book_chapters WHERE email = ?", [userEmail], (err, book_chap) => {
+                              if (err) {
+                                console.error("Error retrieving personal details:", err);
+                                return res.status(500).send("Internal Server Error");
+                              }
+                              db.query("SELECT * FROM googlelink WHERE email = ?", [userEmail], (err, glink) => {
+                                if (err) {
+                                  console.error("Error retrieving personal details:", err);
+                                  return res.status(500).send("Internal Server Error");
+                                }
+
+                                db.query("SELECT * FROM membership WHERE email = ?", [userEmail], (err, member) => {
+                                  if (err) {
+                                    console.error("Error retrieving personal details:", err);
+                                    return res.status(500).send("Internal Server Error");
+                                  }
+
+                                  db.query("SELECT * FROM training WHERE email = ?", [userEmail], (err, training) => {
+                                    if (err) {
+                                      console.error("Error retrieving personal details:", err);
+                                      return res.status(500).send("Internal Server Error");
+                                    }
+
+                                    db.query("SELECT * FROM awards WHERE email = ?", [userEmail], (err, awards) => {
+                                      if (err) {
+                                        console.error("Error retrieving personal details:", err);
+                                        return res.status(500).send("Internal Server Error");
+                                      }
+
+                                      db.query("SELECT * FROM phd_thesis WHERE email = ?", [userEmail], (err, phd) => {
+                                        if (err) {
+                                          console.error("Error retrieving personal details:", err);
+                                          return res.status(500).send("Internal Server Error");
+                                        }
+                                        db.query("SELECT * FROM pg_thesis WHERE email = ?", [userEmail], (err, pg) => {
+                                          if (err) {
+                                            console.error("Error retrieving personal details:", err);
+                                            return res.status(500).send("Internal Server Error");
+                                          }
+
+                                          db.query("SELECT * FROM ug_thesis WHERE email = ?", [userEmail], (err, ug) => {
+                                            if (err) {
+                                              console.error("Error retrieving personal details:", err);
+                                              return res.status(500).send("Internal Server Error");
+                                            }
+
+                                            db.query("SELECT * FROM sponsoredprojects WHERE email = ?", [userEmail], (err, spons) => {
+                                              if (err) {
+                                                console.error("Error retrieving personal details:", err);
+                                                return res.status(500).send("Internal Server Error");
+                                              }
+
+                                              db.query("SELECT * FROM consultancyprojects WHERE email = ?", [userEmail], (err, consultancy) => {
+                                                if (err) {
+                                                  console.error("Error retrieving personal details:", err);
+                                                  return res.status(500).send("Internal Server Error");
+                                                }
+
+                                                db.query("SELECT * FROM page_8 WHERE email = ?", [userEmail], (err, page8) => {
+                                                  if (err) {
+                                                    console.error("Error retrieving personal details:", err);
+                                                    return res.status(500).send("Internal Server Error");
+                                                  }
+                                                  db.query("SELECT * FROM page_7 WHERE email = ?", [userEmail], (err, page7) => {
+                                                    if (err) {
+                                                      console.error("Error retrieving personal details:", err);
+                                                      return res.status(500).send("Internal Server Error");
+                                                    }
+                                                    db.query("SELECT * FROM datapage WHERE email = ?", [userEmail], (err, datapage) => {
+                                                      if (err) {
+                                                        console.error("Error retrieving personal details:", err);
+                                                        return res.status(500).send("Internal Server Error");
+                                                      }
+
+      // Now pass both user profile and application details to the template
+      res.render("formpages/print1.ejs", {
+        firstname: first_name,
+        lastname: last_name,
+        applicationdetails: appDetails , // assuming we need the first record
+        personalRows: perDetails ,
+        educationaldetails: eduDetails,
+        edu_additionaldetails: eduadd,
+        present: pres,
+        employhist: ehist,
+        teaching: texp,
+        research: rexp,
+        Industrial: indexp,
+        aosaor: aosaor,
+        publications: pub ,
+        top10publications: top10,
+        patents: patent,
+        books: book,
+        book_chapters: book_chap,
+        googlelink: glink,
+        membership: member,
+        training: training,
+        awards: awards,
+        phd_thesis: phd,
+        pg_thesis: pg,
+        ug_thesis: ug,
+        sponsoredprojects: spons,
+        consultancyprojects: consultancy,
+        page8: page8,
+        page_7: page7,
+        datapage: datapage,
+      });
+      });
+      });
+      });
+      })
+      });
+      });
+      });
+      });
+      });
+      });
+      });
+      });
+      });
+      });
+      });
+      });
+      });
+      });
+      });
+      });
+      });
+      });
+      });
+      });
+      });
+      });
+    });
+  });
+});
+
 
 function isAuthenticated(req, res, next) {
   if (req.isAuthenticated()) {
