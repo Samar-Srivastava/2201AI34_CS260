@@ -13,9 +13,6 @@ import { Strategy as LocalStrategy } from "passport-local";
 import flash from "connect-flash";
 import nodemailer from "nodemailer";
 
-// Load BASE_URL for use in Node.js and EJS
-const BASE_URL = process.env.BASE_URL;
-app.locals.BASE_URL = BASE_URL;
 
 
 // Body parser middleware
@@ -30,6 +27,7 @@ import { Console } from "console";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 app.set("views", path.join(__dirname, "views"));
+
 
 // Serve static files
 app.use(express.static(path.join(__dirname, "public")));
@@ -90,6 +88,7 @@ app.use((req, res, next) => {
   next();
 });
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.locals.BASE_URL = process.env.BASE_URL || "";
 db.query(`CREATE TABLE IF NOT EXISTS users (
   id INT AUTO_INCREMENT PRIMARY KEY,
   email VARCHAR(255) UNIQUE NOT NULL,
