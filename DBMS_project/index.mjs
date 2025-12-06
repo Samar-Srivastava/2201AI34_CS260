@@ -1,5 +1,6 @@
 import express from "express";
-const app = express();
+const app = express();  // app MUST be created before app.locals
+
 import multer from "multer";
 import path from "path";
 import ejsmate from "ejs-mate";
@@ -11,6 +12,12 @@ import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import flash from "connect-flash";
 import nodemailer from "nodemailer";
+
+// Load BASE_URL for use in Node.js and EJS
+const BASE_URL = process.env.BASE_URL;
+app.locals.BASE_URL = BASE_URL;
+
+
 // Body parser middleware
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -447,8 +454,8 @@ app.post("/reset", async (req, res) => {
     from: "IIT PATNA<support>.com",
     to: email,
     subject: "password-reset-link",
-    text: `Click the following link to reset your password: http://localhost:8000/reset-password/${token}`,
-    html: `<p>Click the following link to reset your password:</p><p><a href="http://localhost:8000/reset-password/${token}">http://localhost:8000/reset-password/${token}</a></p>`
+    text: `Click the following link to reset your password: ${BASE_URL}/reset-password/${token}`,
+    html: `<p>Click the following link to reset your password:</p><p><a href="${BASE_URL}/reset-password/${token}">${BASE_URL}/reset-password/${token}</a></p>`
   };
   await transporter.sendMail(mailOptions, (err, info) => {
     if (err) {
@@ -1702,7 +1709,7 @@ app.get("/logout", (req, res) => {
   });
 });
 
-app.listen(8000, () => {
-  console.log(`Server is running on port 8000`);
-});
+const PORT = process.env.PORT || 8000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
 
