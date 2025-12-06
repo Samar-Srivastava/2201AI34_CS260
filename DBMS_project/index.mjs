@@ -38,22 +38,25 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({ storage: storage });
-// MySQL connection
+
+// MySQL connection (Railway)
 const db = mysql.createConnection({
-  host: "mysql",
-  user: "root",
-  password: "samar",
-  database: "cs260",
+  host: process.env.MYSQLHOST,
+  user: process.env.MYSQLUSER,
+  password: process.env.MYSQLPASSWORD,
+  database: process.env.MYSQLDATABASE,
+  port: process.env.MYSQLPORT,
 });
 
 // Connect to MySQL
 db.connect((err) => {
   if (err) {
-    console.log(err);
+    console.log("DB ERROR:", err);
   } else {
-    console.log("MySQL connected");
+    console.log("MySQL connected (Railway)");
   }
 });
+
 
 // Session middleware
 app.use(
@@ -1702,3 +1705,4 @@ app.get("/logout", (req, res) => {
 app.listen(8000, () => {
   console.log(`Server is running on port 8000`);
 });
+
